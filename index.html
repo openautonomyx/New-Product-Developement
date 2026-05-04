@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevXP | Developer Experience & Productivity</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-elevated: #1a1a24;
+            --accent-primary: #00ff88;
+            --accent-secondary: #7b61ff;
+            --accent-tertiary: #ff6b35;
+            --text-primary: #f0f0f5;
+            --text-secondary: #8888a0;
+            --text-muted: #555566;
+            --border-subtle: #2a2a3a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Geometric Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse 80% 50% at 20% 40%, rgba(123, 97, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse 60% 40% at 80% 60%, rgba(0, 255, 136, 0.05) 0%, transparent 50%),
+                linear-gradient(180deg, transparent 0%, rgba(0, 255, 136, 0.02) 100%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Grid Pattern Overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Navigation */
+        nav {
+            padding: 24px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-primary);
+            letter-spacing: -1px;
+        }
+
+        .logo span {
+            color: var(--text-secondary);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent-primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 120px 0 80px;
+            text-align: center;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 100px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        .hero-badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .hero h1 {
+            font-size: clamp(40px, 8vw, 72px);
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -2px;
+            margin-bottom: 24px;
+            animation: fadeInUp 0.6s ease-out 0.1s backwards;
+        }
+
+        .hero h1 .highlight {
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin: 0 auto 48px;
+            animation: fadeInUp 0.6s ease-out 0.2s backwards;
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 64px;
+            animation: fadeInUp 0.6s ease-out 0.3s backwards;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        /* Categories Section */
+        .categories {
+            padding: 80px 0;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 64px;
+        }
+
+        .section-header h2 {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .section-header p {
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 24px;
+        }
+
+        .category-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 32px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .category-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--card-accent, var(--accent-primary));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .category-card:hover {
+            border-color: var(--card-accent, var(--accent-primary));
+            transform: translateY(-4px);
+        }
+
+        .category-card:hover::before {
+            opacity: 1;
+        }
+
+        .category-card:nth-child(1) { --card-accent: #00ff88; }
+        .category-card:nth-child(2) { --card-accent: #7b61ff; }
+        .category-card:nth-child(3) { --card-accent: #ff6b35; }
+        .category-card:nth-child(4) { --card-accent: #00d4ff; }
+        .category-card:nth-child(5) { --card-accent: #ff3366; }
+
+        .category-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .category-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .category-description {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .category-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .meta-stat {
+            text-align: left;
+        }
+
+        .meta-stat .value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .meta-stat .label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .category-products {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .product-tag {
+            padding: 4px 12px;
+            background: var(--bg-elevated);
+            border-radius: 100px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Why This Matters Section */
+        .why-section {
+            padding: 120px 0;
+            background: var(--bg-card);
+        }
+
+        .why-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+
+        .why-content h2 {
+            font-size: 36px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            line-height: 1.2;
+        }
+
+        .why-content p {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        .why-list {
+            list-style: none;
+        }
+
+        .why-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .why-list li::before {
+            content: '→';
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-primary);
+            font-size: 16px;
+        }
+
+        .why-visual {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .visual-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .visual-card.highlight {
+            grid-column: span 2;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(123, 97, 255, 0.1) 100%);
+            border-color: var(--accent-primary);
+        }
+
+        .visual-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .visual-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 120px 0;
+            text-align: center;
+        }
+
+        .cta-section h2 {
+            font-size: 40px;
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+
+        .cta-section p {
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: var(--bg-dark);
+        }
+
+        .btn-primary:hover {
+            background: #00cc6e;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        /* Footer */
+        footer {
+            padding: 48px 0;
+            border-top: 1px solid var(--border-subtle);
+            text-align: center;
+        }
+
+        .footer-text {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Animations */
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero {
+                padding: 80px 0 60px;
+            }
+
+            .hero h1 {
+                font-size: 40px;
+            }
+
+            .hero-stats {
+                gap: 32px;
+            }
+
+            .why-grid {
+                grid-template-columns: 1fr;
+                gap: 48px;
+            }
+
+            .categories-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="container nav-content">
+            <div class="logo">DevXP<span>.io</span></div>
+            <ul class="nav-links">
+                <li><a href="#categories">Categories</a></li>
+                <li><a href="#why">Why It Matters</a></li>
+                <li><a href="#cta">Get Started</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-badge">Gartner Research</div>
+            <h1>Developer Experience<br><span class="highlight">& Productivity</span></h1>
+            <p>Your comprehensive guide to the tools and platforms that empower developers to build better software, faster. Curated insights from industry-leading research.</p>
+            
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-value">5</div>
+                    <div class="stat-label">Categories</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">1,830</div>
+                    <div class="stat-label">Reviews</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">107</div>
+                    <div class="stat-label">Vendors</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="categories" id="categories">
+        <div class="container">
+            <div class="section-header">
+                <h2>5 Key Gartner Categories</h2>
+                <p>The essential categories shaping how developers work, collaborate, and deliver value.</p>
+            </div>
+
+            <div class="categories-grid">
+                <div class="category-card">
+                    <div class="category-number">01</div>
+                    <h3 class="category-title">AI Code Assistants</h3>
+                    <p class="category-description">Intelligent coding companions that help developers write, refactor, and debug code faster using AI-powered suggestions and automation.</p>
+                    <div class="category-meta">
+                        <div class="meta-stat">
+                            <div class="value">1,445</div>
+                            <div class="label">Reviews</div>
+                        </div>
+                        <div class="meta-stat">
+                            <div class="value">37</div>
+                            <div class="label">Vendors</div>
+                        </div>
+                    </div>
+                    <div class="category-products" style="margin-top: 16px;">
+                        <span class="product-tag">Amazon Q Developer</span>
+                    </div>
+                </div>
+
+                <div class="category-card">
+                    <div class="category-number">02</div>
+                    <h3 class="category-title">Developer Productivity Insight Platforms</h3>
+                    <p class="category-description">Analytics and insights tools that measure and improve developer productivity, workflow efficiency, and team collaboration.</p>
+                    <div class="category-meta">
+                        <div class="meta-stat">
+                            <div class="value">290</div>
+                            <div class="label">Reviews</div>
+                        </div>
+                        <div class="meta-stat">
+                            <div class="value">37</div>
+                            <div class="label">Vendors</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="category-card">
+                    <div class="category-number">03</div>
+                    <h3 class="category-title">AI Agents for Application Developers</h3>
+                    <p class="category-description">Autonomous AI agents that can take independent actions to assist with development tasks, from code generation to testing and deployment.</p>
+                    <div class="category-meta">
+                        <div class="meta-stat">
+                            <div class="value">76</div>
+                            <div class="label">Reviews</div>
+                        </div>
+                        <div class="meta-stat">
+                            <div class="value">13</div>
+                            <div class="label">Vendors</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="category-card">
+                    <div class="category-number">04</div>
+                    <h3 class="category-title">Technical Debt Management</h3>
+                    <p class="category-description">Tools to identify, track, and manage technical debt in software projects, helping teams prioritize refactoring and improvements.</p>
+                    <div class="category-meta">
+                        <div class="meta-stat">
+                            <div class="value">14</div>
+                            <div class="label">Reviews</div>
+                        </div>
+                        <div class="meta-stat">
+                            <div class="value">11</div>
+                            <div class="label">Vendors</div>
+                        </div>
+                    </div>
+                    <div class="category-products" style="margin-top: 16px;">
+                        <span class="product-tag">Rocket Enterprise Developer</span>
+                    </div>
+                </div>
+
+                <div class="category-card">
+                    <div class="category-number">05</div>
+                    <h3 class="category-title">Developer Skills Assessment</h3>
+                    <p class="category-description">Platforms for evaluating and benchmarking developer skills, technical assessments, and interview preparation.</p>
+                    <div class="category-meta">
+                        <div class="meta-stat">
+                            <div class="value">5</div>
+                            <div class="label">Reviews</div>
+                        </div>
+                        <div class="meta-stat">
+                            <div class="value">9</div>
+                            <div class="label">Vendors</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Our Tools Section -->
+    <section class="tools-section" id="tools">
+        <div class="container">
+            <div class="section-header">
+                <h2>Our Tools</h2>
+                <p>Specialized AI-powered tools to enhance your development workflow.</p>
+            </div>
+
+            <div class="tools-grid">
+                <div class="tool-card">
+                    <div class="tool-icon">🤖</div>
+                    <h3 class="tool-title">AGenNext CodeAssist</h3>
+                    <p class="tool-description">AI-powered code generation and completion assistant that understands context, suggests smart completions, and helps write better code faster.</p>
+                    <div class="tool-features">
+                        <span class="feature-tag">Smart Completions</span>
+                        <span class="feature-tag">Context Awareness</span>
+                        <span class="feature-tag">Multi-language</span>
+                    </div>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-icon">🔍</div>
+                    <h3 class="tool-title">AGenNext CodeReview</h3>
+                    <p class="tool-description">Automated code review assistant that analyzes your code for bugs, security vulnerabilities, and best practices before you merge.</p>
+                    <div class="tool-features">
+                        <span class="feature-tag">Security Analysis</span>
+                        <span class="feature-tag">Bug Detection</span>
+                        <span class="feature-tag">Best Practices</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="why-section" id="why">
+        <div class="container">
+            <div class="why-grid">
+                <div class="why-content">
+                    <h2>Why Developer Experience Matters</h2>
+                    <p>In today's competitive landscape, developer experience and productivity tools are critical drivers of business value. The right tools can:</p>
+                    <ul class="why-list">
+                        <li>Reduce time-to-market by automating repetitive tasks</li>
+                        <li>Improve code quality through AI-assisted best practices</li>
+                        <li>Enhance team collaboration and knowledge sharing</li>
+                        <li>Enable faster onboarding of new developers</li>
+                        <li>Reduce burnout through better workflows</li>
+                    </ul>
+                </div>
+                <div class="why-visual">
+                    <div class="visual-card highlight">
+                        <div class="visual-icon">⚡</div>
+                        <div class="visual-label">79% of Tier 1 reviews are AI Code Assistants</div>
+                    </div>
+                    <div class="visual-card">
+                        <div class="visual-icon">📈</div>
+                        <div class="visual-label">Growing 40%+ YoY</div>
+                    </div>
+                    <div class="visual-card">
+                        <div class="visual-icon">🔧</div>
+                        <div class="visual-label">37 Active Vendors</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section" id="cta">
+        <div class="container">
+            <h2>Start Your Journey</h2>
+            <p>Explore our detailed guides, comparisons, and reviews for each category to make informed decisions for your team.</p>
+            <div class="cta-buttons">
+                <button class="btn btn-primary">Browse Categories →</button>
+                <button class="btn btn-secondary">Request Demo</button>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p class="footer-text">DevXP.io — Curated insights from Gartner research on developer experience & productivity.</p>
+        </div>
+    </footer>
+</body>
+</html>
