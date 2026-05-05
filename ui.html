@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent Control Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-dark: #0d1117;
+            --bg-card: #161b22;
+            --bg-elevated: #21262d;
+            --border: #30363d;
+            --accent: #238636;
+            --accent-blue: #58a6ff;
+            --text: #c9d1d9;
+            --text-dim: #8b949e;
+            --error: #f85149;
+            --warning: #d29922;
+            --success: #238636;
+        }
+        
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text); }
+        
+        .layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+        
+        /* Sidebar */
+        .sidebar { background: var(--bg-card); border-right: 1px solid var(--border); padding: 16px; }
+        .logo { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--accent); margin-bottom: 24px; }
+        .nav-item { padding: 10px 12px; border-radius: 6px; cursor: pointer; color: var(--text-dim); transition: 0.2s; margin-bottom: 4px; }
+        .nav-item:hover { background: var(--bg-elevated); color: var(--text); }
+        .nav-item.active { background: var(--accent); color: white; }
+        
+        /* Main */
+        .main { padding: 24px; overflow-y: auto; }
+        
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .header h1 { font-size: 24px; font-weight: 600; }
+        .user { display: flex; align-items: center; gap: 12px; }
+        .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; }
+        
+        /* Cards */
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+        .card-header { font-size: 14px; font-weight: 600; color: var(--text-dim); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+        .stat-value { font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+        .stat-label { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+        
+        .stat-highlight { color: var(--accent); }
+        .stat-warning { color: var(--warning); }
+        .stat-error { color: var(--error); }
+        
+        /* Progress Bar */
+        .progress-container { margin-bottom: 24px; }
+        .progress-labels { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+        .progress-bar { height: 12px; background: var(--bg-elevated); border-radius: 6px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #2ea043); border-radius: 6px; transition: 0.5s; }
+        
+        /* Table */
+        .table { width: 100%; border-collapse: collapse; }
+        .table th { text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: var(--text-dim); border-bottom: 1px solid var(--border); text-transform: uppercase; }
+        .table td { padding: 12px; border-bottom: 1px solid var(--border); }
+        .table tr:hover { background: var(--bg-elevated); }
+        
+        /* Status Badge */
+        .status { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .status-completed { background: rgba(35, 134, 54, 0.2); color: var(--success); }
+        .status-running { background: rgba(88, 166, 255, 0.2); color: var(--accent-blue); }
+        .status-failed { background: rgba(248, 81, 73, 0.2); color: var(--error); }
+        .status-idle { background: rgba(139, 148, 158, 0.2); color: var(--text-dim); }
+        
+        /* Agent Card */
+        .agent-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .agent-card { background: var(--bg-elevated); border-radius: 8px; padding: 16px; }
+        .agent-name { font-weight: 600; margin-bottom: 4px; }
+        .agent-desc { font-size: 13px; color: var(--text-dim); margin-bottom: 12px; }
+        
+        /* Message List */
+        .message-list { max-height: 400px; overflow-y: auto; }
+        .message-item { padding: 12px; border-bottom: 1px solid var(--border); }
+        .message-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .message-sender { font-weight: 600; font-size: 13px; }
+        .message-time { font-size: 12px; color: var(--text-dim); }
+        .message-body { font-size: 13px; color: var(--text-dim); }
+        
+        /* JSON Viewer */
+        .json-viewer { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; max-height: 300px; overflow: auto; white-space: pre; }
+        
+        /* Login */
+        .login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .login-box { width: 360px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 32px; }
+        .login-title { font-size: 24px; font-weight: 600; margin-bottom: 24px; text-align: center; }
+        .login-input { width: 100%; padding: 12px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; color: var(--text); margin-bottom: 12px; font-size: 14px; }
+        .login-input::placeholder { color: var(--text-dim); }
+        .login-btn { width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; }
+        .login-btn:hover { background: #2ea043; }
+        
+        /* Hidden */
+        .hidden { display: none !important; }
+        
+        /* Loading */
+        .loading { text-align: center; padding: 40px; color: var(--text-dim); }
+        
+        /* Actions */
+        .btn { padding: 8px 16px; border-radius: 6px; cursor: pointer; border: none; font-size: 13px; font-weight: 500; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-secondary { background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border); }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-box">
+            <div class="login-title">Multi-Agent Control Center</div>
+            <input type="text" id="username" class="login-input" placeholder="Username">
+            <input type="password" id="password" class="login-input" placeholder="Password">
+            <button class="login-btn" onclick="login()">Sign In</button>
+            <p style="margin-top: 16px; font-size: 12px; color: var(--text-dim); text-align: center;">admin / admin123</p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="appScreen" class="layout hidden">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">⚡ AgentOS</div>
+            <div class="nav-item active" data-view="dashboard">🏠 Dashboard</div>
+            <div class="nav-item" data-view="agents">🧠 Agents</div>
+            <div class="nav-item" data-view="tasks">📋 Tasks</div>
+            <div class="nav-item" data-view="messages">💬 Messages</div>
+            <div class="nav-item" data-view="debug">🔧 Debug</div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main">
+            <!-- Header -->
+            <div class="header">
+                <h1 id="pageTitle">Dashboard</h1>
+                <div class="user">
+                    <span id="userDisplay">admin</span>
+                    <div class="user-avatar" id="userAvatar">A</div>
+                </div>
+            </div>
+
+            <!-- DASHBOARD VIEW -->
+            <div id="dashboardView">
+                <!-- ARR Progress -->
+                <div class="progress-container">
+                    <div class="progress-labels">
+                        <span>ARR Progress to $1M</span>
+                        <span id="arrProgress">$0 / $1,000,000</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="arrBar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statArr">$0</div>
+                        <div class="stat-label">Monthly ARR</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statAgents">0</div>
+                        <div class="stat-label">Active Agents</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTasks">0</div>
+                        <div class="stat-label">Tasks Completed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statConv">0</div>
+                        <div class="stat-label">Conversions</div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="card">
+                    <div class="card-header">Recent Activity</div>
+                    <div id="activityList" class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <!-- AGENTS VIEW -->
+            <div id="agentsView" class="hidden">
+                <div class="agent-grid" id="agentGrid"></div>
+            </div>
+
+            <!-- TASKS VIEW -->
+            <div id="tasksView" class="hidden">
+                <div class="card">
+                    <div class="card-header">All Tasks</div>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Task ID</th>
+                                <th>Title</th>
+                                <th>Agent</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody id="taskTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- MESSAGES VIEW -->
+            <div id="messagesView" class="hidden">
+                <div class="card">
+                    <div class="card-header">Message Protocol</div>
+                    <div id="messageList" class="message-list"></div>
+                </div>
+            </div>
+
+            <!-- DEBUG VIEW -->
+            <div id="debugView" class="hidden">
+                <div class="card">
+                    <div class="card-header">System Logs</div>
+                    <div id="logViewer" class="json-viewer">Loading logs...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let token = null;
+        let currentView = 'dashboard';
+
+        // Login
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, password})
+            });
+            
+            if (res.ok) {
+                token = (await res.json()).access_token;
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('appScreen').classList.remove('hidden');
+                document.getElementById('userDisplay').textContent = username;
+                document.getElementById('userAvatar').textContent = username[0].toUpperCase();
+                loadDashboard();
+            } else {
+                alert('Login failed');
+            }
+        }
+
+        // API Helper
+        async function api(endpoint) {
+            const res = await fetch(endpoint, {
+                headers: {'Authorization': `Bearer ${token}`}
+            });
+            return res.json();
+        }
+
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                currentView = item.dataset.view;
+                showView(currentView);
+            });
+        });
+
+        function showView(view) {
+            document.getElementById('dashboardView').classList.add('hidden');
+            document.getElementById('agentsView').classList.add('hidden');
+            document.getElementById('tasksView').classList.add('hidden');
+            document.getElementById('messagesView').classList.add('hidden');
+            document.getElementById('debugView').classList.add('hidden');
+            document.getElementById(view + 'View').classList.remove('hidden');
+            
+            const titles = {dashboard: 'Dashboard', agents: 'Agent Monitor', tasks: 'Task Manager', messages: 'Message Protocol', debug: 'Debug Console'};
+            document.getElementById('pageTitle').textContent = titles[view];
+            
+            if (view === 'dashboard') loadDashboard();
+            else if (view === 'agents') loadAgents();
+            else if (view === 'tasks') loadTasks();
+            else if (view === 'messages') loadMessages();
+            else if (view === 'debug') loadDebug();
+        }
+
+        // Dashboard
+        async function loadDashboard() {
+            const metrics = await api('/api/metrics');
+            const agents = await api('/api/agents');
+            const taskList = await api('/api/tasks');
+            
+            const mrr = metrics.mrr || 0;
+            const arr = mrr * 12;
+            const progress = Math.min(100, (arr / 1000000) * 100);
+            
+            document.getElementById('arrProgress').textContent = `$${arr.toLocaleString()} / $1,000,000`;
+            document.getElementById('arrBar').style.width = progress + '%';
+            document.getElementById('statArr').textContent = `$${mrr.toLocaleString()}`;
+            document.getElementById('statAgents').textContent = Object.keys(agents).length;
+            document.getElementById('statTasks').textContent = taskList.length;
+            document.getElementById('statConv').textContent = metrics.conversions || 0;
+
+            // Activity
+            const activity = document.getElementById('activityList');
+            activity.innerHTML = taskList.slice(0, 5).map(t => `
+                <div class="message-item">
+                    <div class="message-header">
+                        <span class="message-sender">${t.assigned_agent}</span>
+                        <span class="message-time">${new Date(t.created_at).toLocaleTimeString()}</span>
+                    </div>
+                    <div class="message-body">${t.title}</div>
+                </div>
+            `).join('') || '<div class="loading">No activity yet</div>';
+        }
+
+        // Agents
+        async function loadAgents() {
+            const agents = await api('/api/agents');
+            const names = {
+                ideation_agent: 'Ideation Agent',
+                pm_agent: 'Product Manager',
+                engineering_agent: 'Engineering',
+                marketing_agent: 'Marketing',
+                sales_agent: 'Sales',
+                cs_agent: 'Customer Success'
+            };
+            const statuses = {
+                'IDLE': 'status-idle',
+                'WORKING': 'status-running', 
+                'COMPLETED': 'status-completed',
+                'FAILED': 'status-failed'
+            };
+            
+            document.getElementById('agentGrid').innerHTML = Object.entries(agents).map(([id, a]) => `
+                <div class="agent-card">
+                    <div class="agent-name">${names[id] || id}</div>
+                    <div class="agent-desc">${a.description || 'Agent'}</div>
+                    <span class="status ${statuses[a.status] || 'status-idle'}">${a.status}</span>
+                </div>
+            `).join('');
+        }
+
+        // Tasks
+        async function loadTasks() {
+            const tasks = await api('/api/tasks');
+            const statuses = {
+                'PENDING': 'status-idle',
+                'IN_PROGRESS': 'status-running',
+                'COMPLETED': 'status-completed',
+                'FAILED': 'status-failed'
+            };
+            document.getElementById('taskTable').innerHTML = tasks.map(t => `
+                <tr>
+                    <td><code>${t.task_id}</code></td>
+                    <td>${t.title}</td>
+                    <td>${t.assigned_agent}</td>
+                    <td><span class="status ${statuses[t.status]}">${t.status}</span></td>
+                    <td>${new Date(t.created_at).toLocaleString()}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="5">No tasks</td></tr>';
+        }
+
+        // Messages
+        async function loadMessages() {
+            const messages = await api('/api/messages');
+            document.getElementById('messageList').innerHTML = messages.slice(0, 20).map(m => `
+                <div class="message-item">
+                    <div class="message-header">
+                        <span class="message-sender">${m.sender.agent_id} → ${m.receiver.agent_id}</span>
+                        <span class="message-time">${m.message_type}</span>
+                    </div>
+                    <div class="message-body">${JSON.stringify(m.payload).substring(0, 100)}</div>
+                </div>
+            `).join('') || '<div class="loading">No messages</div>';
+        }
+
+        // Debug
+        async function loadDebug() {
+            const state = await api('/api/state');
+            document.getElementById('logViewer').textContent = JSON.stringify(state, null, 2);
+        }
+
+        // Auto-refresh
+        setInterval(() => {
+            if (token && !document.getElementById('loginScreen').classList.contains('hidden') === false) {
+                loadDashboard();
+            }
+        }, 10000);
+    </script>
+</body>
+</html>
