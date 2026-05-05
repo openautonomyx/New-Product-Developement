@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
@@ -147,6 +149,12 @@ def health_check():
 @app.get("/")
 def root():
     return {"service": "Multi-Agent Product System API", "version": "1.0.0", "docs": "/docs"}
+
+
+@app.get("/ui")
+def get_ui():
+    """Serve the UI"""
+    return FileResponse("ui.html")
 
 # =============================================================================
 # AGENTS (Protected)

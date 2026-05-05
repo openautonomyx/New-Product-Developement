@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multi-Agent Control Center</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -239,7 +239,7 @@
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             
-            const res = await fetch('/api/auth/login', {
+            const res = await fetch('/api/v1/auth/login', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({username, password})
@@ -258,10 +258,21 @@
         }
 
         // API Helper
-        async function api(endpoint) {
+        async function api(endpoint, method='GET', body=null) {
             const res = await fetch(endpoint, {
-                headers: {'Authorization': `Bearer ${token}`}
+                method,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: body ? JSON.stringify(body) : null
             });
+            if (res.status === 401) {
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('appScreen').classList.add('hidden');
+                alert('Session expired');
+                return null;
+            }
             return res.json();
         }
 
@@ -295,9 +306,9 @@
 
         // Dashboard
         async function loadDashboard() {
-            const metrics = await api('/api/metrics');
-            const agents = await api('/api/agents');
-            const taskList = await api('/api/tasks');
+            const metrics = await api('/api/v1/metrics');
+            const agents = await api('/api/v1/agents');
+            const taskList = await api('/api/v1/tasks');
             
             const mrr = metrics.mrr || 0;
             const arr = mrr * 12;
@@ -325,7 +336,7 @@
 
         // Agents
         async function loadAgents() {
-            const agents = await api('/api/agents');
+            const agents = await api('/api/v1/agents');
             const names = {
                 ideation_agent: 'Ideation Agent',
                 pm_agent: 'Product Manager',
@@ -352,7 +363,7 @@
 
         // Tasks
         async function loadTasks() {
-            const tasks = await api('/api/tasks');
+            const tasks = await api('/api/v1/tasks');
             const statuses = {
                 'PENDING': 'status-idle',
                 'IN_PROGRESS': 'status-running',
@@ -372,7 +383,7 @@
 
         // Messages
         async function loadMessages() {
-            const messages = await api('/api/messages');
+            const messages = await api('/api/v1/messages');
             document.getElementById('messageList').innerHTML = messages.slice(0, 20).map(m => `
                 <div class="message-item">
                     <div class="message-header">
@@ -386,7 +397,7 @@
 
         // Debug
         async function loadDebug() {
-            const state = await api('/api/state');
+            const state = await api('/api/v1/state');
             document.getElementById('logViewer').textContent = JSON.stringify(state, null, 2);
         }
 
