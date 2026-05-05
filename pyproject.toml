@@ -1,0 +1,16 @@
+[project]
+name = "multi-agent-product-system"
+version = "0.1.0"
+description = "Multi-Agent System to Drive Idea → Execution → Sales → Customer Success"
+requires-python = ">=3.10"
+dependencies = [
+    "crewai>=0.70.0",
+    "langchain-openai>=0.1.0",
+    "langchain-core>=0.2.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
