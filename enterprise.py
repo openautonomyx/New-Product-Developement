@@ -739,18 +739,25 @@ def require_admin(payload: TokenData = Depends(verify_token)):
 
 @app.post("/api/v1/auth/login")
 def login(req: LoginRequest):
-    """Login with tenant isolation + rate limiting"""
+    """Login with tenant isolation + rate limiting + account lockout"""
     # Rate limit login attempts
     if not rate_limiter.check(f"login:{req.username}"):
         raise HTTPException(status_code=429, detail="Too many login attempts")
     
-    # Validate input
+    # Check account lockout
+    if not lockout.check(req.username):
+        raise HTTPException(status_code=423, detail="Account locked")
+    
+    # Validate/sanitize input
     req.username = validator.sanitize_string(req.username, 50)
     
     for user in db.users.values():
         if user.username == req.username:
             password_hash = hashlib.sha256(req.password.encode()).hexdigest()
             if password_hash == user.hashed_password:
+                # Clear failed attempts on success
+                lockout.record_success(req.username)
+                
                 token_data = {
                     "user_id": user.user_id,
                     "tenant_id": user.tenant_id,
@@ -763,6 +770,9 @@ def login(req: LoginRequest):
                 db.add_audit(user.tenant_id, user.user_id, "LOGIN", "auth", "SUCCESS")
                 
                 return {"access_token": token, "token_type": "bearer", "user": user.to_dict()}
+            
+            # Record failed attempt
+            lockout.record_failure(req.username)
     
     raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -906,9 +916,248 @@ def get_metrics(payload: TokenData = Depends(verify_token)):
 # HEALTH
 # =============================================================================
 
+# =============================================================================
+# ADDITIONAL HARDENING
+# =============================================================================
+
+# Security middleware for requests
+@app.middleware("http")
+async def security_headers(request, call_next):
+    """Add security headers"""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    return response
+
+# Account lockout after failed attempts
+class AccountLockout:
+    """Account lockout after failed attempts"""
+    
+    def __init__(self, max_attempts: int = 5, lockout_seconds: int = 300):
+        self.max_attempts = max_attempts
+        self.lockout_seconds = lockout_seconds
+        self.attempts: dict[str, list[float]] = {}
+        self.locked: dict[str, float] = {}
+    
+    def check(self, username: str) -> bool:
+        """Check if account is locked"""
+        if username in self.locked:
+            if time.time() - self.locked[username] < self.lockout_seconds:
+                return False  # Locked
+            else:
+                del self.locked[username]
+                self.attempts[username] = []
+        return True
+    
+    def record_failure(self, username: str):
+        """Record failed login"""
+        now = time.time()
+        if username not in self.attempts:
+            self.attempts[username] = []
+        self.attempts[username] = [t for t in self.attempts[username] if now - t < 300]
+        self.attempts[username].append(now)
+        
+        if len(self.attempts[username]) >= self.max_attempts:
+            self.locked[username] = now
+    
+    def record_success(self, username: str):
+        """Clear failed attempts on success"""
+        self.attempts[username] = []
+
+lockout = AccountLockout()
+
+# Session management
+class SessionManager:
+    """Manage user sessions"""
+    
+    def __init__(self, max_sessions: int = 3):
+        self.max_sessions = max_sessions
+        self.sessions: dict[str, list[str]] = {}
+    
+    def create(self, user_id: str, session_id: str):
+        """Create session"""
+        if user_id not in self.sessions:
+            self.sessions[user_id] = []
+        self.sessions[user_id].append(session_id)
+        
+        # Remove oldest if exceeded
+        if len(self.sessions[user_id]) > self.max_sessions:
+            self.sessions[user_id].pop(0)
+    
+    def revoke(self, user_id: str, session_id: str = None):
+        """Revoke session"""
+        if session_id:
+            if user_id in self.sessions and session_id in self.sessions[user_id]:
+                self.sessions[user_id].remove(session_id)
+        else:
+            self.sessions[user_id] = []
+    
+    def count(self, user_id: str) -> int:
+        """Get session count"""
+        return len(self.sessions.get(user_id, []))
+
+sessions = SessionManager()
+
+# API Key rotation
+class APIKeyManager:
+    """Manage API keys with rotation"""
+    
+    def __init__(self):
+        self.keys: dict[str, dict] = {}
+    
+    def create(self, user_id: str, name: str = "default") -> str:
+        """Create API key"""
+        key = f"sk_{secrets.token_hex(32)}"
+        self.keys[key] = {
+            "user_id": user_id,
+            "name": name,
+            "created_at": datetime.now(),
+            "last_used": None,
+            "rotations": 0
+        }
+        return key
+    
+    def verify(self, key: str) -> Optional[str]:
+        """Verify API key, return user_id"""
+        if key not in self.keys:
+            return None
+        self.keys[key]["last_used"] = datetime.now()
+        return self.keys[key]["user_id"]
+    
+    def rotate(self, key: str) -> str:
+        """Rotate API key"""
+        if key not in self.keys:
+            raise ValueError("Key not found")
+        user_id = self.keys[key]["user_id"]
+        name = self.keys[key]["name"]
+        self.keys[key]["rotations"] += 1
+        del self.keys[key]
+        return self.create(user_id, name)
+
+api_keys = APIKeyManager()
+
+# Password policy
+class PasswordPolicy:
+    """Password policy enforcement"""
+    
+    MIN_LENGTH = 8
+    REQUIRE_UPPERCASE = True
+    REQUIRE_LOWERCASE = True
+    REQUIRE_DIGIT = True
+    REQUIRE_SPECIAL = True
+    
+    @classmethod
+    def validate(cls, password: str) -> tuple[bool, list[str]]:
+        """Validate password"""
+        errors = []
+        
+        if len(password) < cls.MIN_LENGTH:
+            errors.append(f"Minimum {cls.MIN_LENGTH} characters")
+        
+        if cls.REQUIRE_UPPERCASE and not re.search(r'[A-Z]', password):
+            errors.append("Uppercase letter required")
+        
+        if cls.REQUIRE_LOWERCASE and not re.search(r'[a-z]', password):
+            errors.append("Lowercase letter required")
+        
+        if cls.REQUIRE_DIGIT and not re.search(r'\d', password):
+            errors.append("Digit required")
+        
+        if cls.REQUIRE_SPECIAL and not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            errors.append("Special character required")
+        
+        return len(errors) == 0, errors
+
+password_policy = PasswordPolicy()
+
+# RBAC - Role Based Access Control
+class RBAC:
+    """Role Based Access Control"""
+    
+    PERMISSIONS = {
+        "admin": ["*"],
+        "editor": ["read", "write", "execute"],
+        "viewer": ["read"],
+    }
+    
+    @classmethod
+    def check(cls, role: str, permission: str) -> bool:
+        """Check if role has permission"""
+        perms = cls.PERMISSIONS.get(role, [])
+        return "*" in perms or permission in perms
+
+rbac = RBAC()
+
+# Tenant isolation verification
+def verify_tenant_access(payload, resource_tenant_id: str) -> bool:
+    """Verify user can access resource"""
+    if payload.role == "admin":
+        return True
+    return payload.tenant_id == resource_tenant_id
+
+# Rate limit by IP + user
+def get_rate_limit_key(payload, ip: str) -> str:
+    return f"{ip}:{payload.user_id}"
+
+# =============================================================================
+# ENHANCED ENDPOINTS
+# =============================================================================
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+@app.post("/api/v1/auth/refresh")
+def refresh_token(req: RefreshRequest):
+    """Refresh access token"""
+    try:
+        payload = jwt.decode(req.refresh_token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
+        
+        if not sessions.verify(payload.get("user_id"), req.refresh_token):
+            raise HTTPException(status_code=401, detail="Invalid session")
+        
+        user_id = payload.get("user_id")
+        
+        new_token_data = {
+            "user_id": user_id,
+            "tenant_id": payload.get("tenant_id"),
+            "role": payload.get("role"),
+            "exp": datetime.now() + timedelta(minutes=security.ACCESS_TOKEN_EXPIRE_MINUTES)
+        }
+        
+        return {"access_token": jwt.encode(new_token_data, security.SECRET_KEY, algorithm=security.ALGORITHM)}
+    except:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+
+@app.post("/api/v1/auth/logout")
+def logout(payload: TokenData = Depends(verify_token)):
+    """Logout - revoke session"""
+    sessions.revoke(payload.user_id)
+    audit.log(payload.tenant_id, payload.user_id, "LOGOUT", "auth", "SUCCESS")
+    return {"status": "logged_out"}
+
+
+@app.get("/api/v1/sessions")
+def list_sessions(payload: TokenData = Depends(verify_token)):
+    """List active sessions"""
+    return {"count": sessions.count(payload.user_id)}
+
+
+@app.post("/api/v1/api-keys")
+def create_api_key(name: str = "default", payload: TokenData = Depends(verify_token)):
+    """Create API key"""
+    key = api_keys.create(payload.user_id, name)
+    audit.log(payload.tenant_id, payload.user_id, "CREATE_API_KEY", "api_keys", "SUCCESS")
+    return {"api_key": key}
+
+
 @app.get("/health")
 def health():
-    return {"status": "healthy", "service": "Multi-Agent Enterprise", "version": "1.0.0"}
+    """Health check with status"""
+    return HealthChecker.check_all()
 
 @app.get("/")
 def root():
